@@ -22,7 +22,7 @@ import org.eclipse.wb.swt.SWTResourceManager;
 
 public class MainFrame
 {
-	public static final String VERSION = "0.5";
+	public static final String VERSION = "0.5a";
 	
 	protected Shell shell;
 	private Text txtGoogle;
