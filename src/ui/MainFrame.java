@@ -33,6 +33,8 @@ public class MainFrame
 	private Label lblStatus;
 	
 	private Crawler crawler;
+	private int txtCountGoogle;
+	private int txtCountWoS;
 	
 	/**
 	 * @wbp.parser.entryPoint
@@ -50,31 +52,40 @@ public class MainFrame
 		}
 	}
 	
-	private void copyToClipboard(Button btn)
+	private void copyToClipboard(Text btn)
 	{
-		CopyToClipboard.getInstance().setClipboardContents(btn.getText());
-        MessageBox dia = new MessageBox(shell, SWT.ICON_INFORMATION | SWT.OK);
-        dia.setText("알림");
-        dia.setMessage("클립보드로 복사되었습니다."); 
-        dia.open();
+		shell.getDisplay().syncExec(()->
+		{
+			CopyToClipboard.getInstance().setClipboardContents(btn.getText());
+	        MessageBox dia = new MessageBox(shell, SWT.ICON_INFORMATION | SWT.OK);
+	        dia.setText("알림");
+	        dia.setMessage("클립보드로 복사되었습니다."); 
+	        dia.open();
+		});
 	}
 	
 	private void toggleCrawl()
 	{
 		if(crawler == null)
 		{
-			btnRun.setEnabled(false);
-			btnRun.setText("정지");
-			crawler = new Crawler(txtPapers.getText(), this);
-			crawler.run();
-			btnRun.setEnabled(true);
+			shell.getDisplay().syncExec(()->
+			{
+				btnRun.setEnabled(false);
+				btnRun.setText("정지");
+				crawler = new Crawler(txtPapers.getText(), this);
+				crawler.start();
+				btnRun.setEnabled(true);
+			});
 		}
 		else
 		{
-			btnRun.setEnabled(false);
-			btnRun.setText("크롤링 시작");
-			crawler.turnOff();
-			crawler = null;
+			shell.getDisplay().syncExec(()->
+			{
+				btnRun.setEnabled(false);
+				btnRun.setText("크롤링 시작");
+				crawler.turnOff();
+				crawler = null;
+			});
 		}
 	}
 	
@@ -83,46 +94,58 @@ public class MainFrame
 	 * @param progress 0~100
 	 */
 	public void setProgress(int progress)
-	{ progressBar.setSelection(progress); }
+	{
+		shell.getDisplay().asyncExec(()-> { progressBar.setSelection(progress);});
+	}
 	
 	public void appendGoogle(String str)
 	{
-		if(txtGoogle.getText().length() > 1)
-			txtGoogle.append("\n");
-		txtGoogle.append(str);
+		if(txtCountGoogle != 0)
+			shell.getDisplay().asyncExec(()-> { txtGoogle.append("\n"); });
+		shell.getDisplay().asyncExec(()-> { txtGoogle.append(str); });
+		txtCountGoogle++;
 	}
 
 	public void appendWoS(String str)
 	{
-		if(txtWoS.getText().length() > 1)
-			txtWoS.append("\n");
-		txtWoS.append(str);
+		if(txtCountWoS != 0)
+			shell.getDisplay().asyncExec(()-> { txtWoS.append("\n"); });
+		shell.getDisplay().asyncExec(()-> { txtWoS.append(str); });
+		txtCountWoS++;
 	}
 	
 	
 	public void clear()
 	{
-		txtGoogle.setText("");
-		txtWoS.setText("");
+		shell.getDisplay().syncExec(()-> { txtGoogle.setText(""); });
+		shell.getDisplay().syncExec(()-> { txtWoS.setText(""); });
+		txtCountGoogle = 0;
+		txtCountWoS = 0;
 	}
 	
 	public void showError(String str)
 	{
-		lblStatus.setText("오류 발생");
-        MessageBox dia = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
-        dia.setText("오류");
-        dia.setMessage(str); 
-        dia.open();
+		shell.getDisplay().syncExec(()->
+		{
+			lblStatus.setText("오류 발생");
+	        MessageBox dia = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
+	        dia.setText("오류");
+	        dia.setMessage(str); 
+	        dia.open();
+		});
 	}
 	
 	public void setStatusString(String str)
-	{ lblStatus.setText(str); }
+	{ shell.getDisplay().asyncExec(()-> { lblStatus.setText(str); }); }
 	
 	public void onCrawlEnd()
 	{
-		btnRun.setText("크롤링 시작");
-		btnRun.setEnabled(true);
-		crawler = null;
+		shell.getDisplay().syncExec(()->
+		{
+			btnRun.setText("크롤링 시작");
+			btnRun.setEnabled(true);
+			crawler = null;
+		});
 	}
 	
 	
@@ -175,7 +198,7 @@ public class MainFrame
 		Button btnGoogle = new Button(compCites, SWT.NONE);
 		btnGoogle.addSelectionListener(new SelectionAdapter() {
 			@Override
-			public void widgetSelected(SelectionEvent arg0) { copyToClipboard(btnGoogle); }
+			public void widgetSelected(SelectionEvent arg0) { copyToClipboard(txtGoogle); }
 		});
 		btnGoogle.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
 		btnGoogle.setText("클립보드로 복사");
@@ -183,7 +206,7 @@ public class MainFrame
 		Button btnWoS = new Button(compCites, SWT.NONE);
 		btnWoS.addSelectionListener(new SelectionAdapter() {
 			@Override
-			public void widgetSelected(SelectionEvent arg0) { copyToClipboard(btnWoS); }
+			public void widgetSelected(SelectionEvent arg0) { copyToClipboard(txtWoS); }
 		});
 		btnWoS.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
 		btnWoS.setText("클립보드로 복사");

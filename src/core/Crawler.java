@@ -26,13 +26,7 @@ public class Crawler extends Thread
 	private MainFrame 				ui;
 	
 	public Crawler(String papersStr, MainFrame ui)
-	{
-		Calendar cal = Calendar.getInstance();
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
-		dateString = " (" + dateFormat.format(cal.getTime()) + ")";
-		httpclient = HttpClients.createDefault();
-		handler = new BasicResponseHandler();
-		
+	{		
 		this.papersStr = papersStr;
 		this.ui = ui;
 	}
@@ -40,6 +34,13 @@ public class Crawler extends Thread
 	@Override
 	public void run()
 	{
+		httpclient = HttpClients.createDefault();
+		handler = new BasicResponseHandler();
+		
+		Calendar cal = Calendar.getInstance();
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
+		dateString = " (" + dateFormat.format(cal.getTime()) + ")";
+		
 		on = true;
 		ui.setProgress(0);
 		ui.clear();
