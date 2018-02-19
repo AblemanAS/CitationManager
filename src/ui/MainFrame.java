@@ -1,12 +1,15 @@
 package ui;
 
+import java.io.File;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import core.CopyToClipboard;
-import core.Crawler;
+import core.FileParser;
 
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -15,24 +18,22 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.wb.swt.SWTResourceManager;
 
 public class MainFrame
 {
-	public static final String VERSION = "0.5a";
+	public static final String VERSION = "0.6";
 	
 	protected Shell shell;
 	private Text txtGoogle;
 	private Text txtWoS;
 	private Text txtPapers;
 	private Button btnRun;
-	private ProgressBar progressBar;
 	private Label lblStatus;
 	
-	private Crawler crawler;
+	private String[] filePaths;
 	private int txtCountGoogle;
 	private int txtCountWoS;
 	
@@ -64,40 +65,42 @@ public class MainFrame
 		});
 	}
 	
-	private void toggleCrawl()
+	private void chooseFile()
 	{
-		if(crawler == null)
+        FileDialog fd = new FileDialog(shell, SWT.MULTI);
+        fd.setText("저장된 HTML 문서 선택");
+        fd.setFilterPath("C:/");
+        String[] filterExt = {"*.html", "*.htm", ".txt"};
+        fd.setFilterExtensions(filterExt);
+        if(fd.open() != null)
+        {
+        	String filterPath = fd.getFilterPath();
+        	filePaths = fd.getFileNames();
+        	for(int i = 0; i < filePaths.length; i++)
+        		filePaths[i] = filterPath + File.separator + filePaths[i];
+    		btnRun.setEnabled(true);
+        }
+	}
+	
+	
+	private void parseFiles()
+	{
+		btnRun.setEnabled(false);
+		clear();
+		try { new FileParser(txtPapers.getText(), this).parse(filePaths); }
+		catch(Exception e)
 		{
-			shell.getDisplay().syncExec(()->
-			{
-				btnRun.setEnabled(false);
-				btnRun.setText("정지");
-				crawler = new Crawler(txtPapers.getText(), this);
-				crawler.start();
-				btnRun.setEnabled(true);
-			});
+			lblStatus.setText("오류 발생");
+	        MessageBox dia = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
+	        dia.setText("오류");
+	        dia.setMessage(e.getMessage()); 
+	        dia.open();
 		}
-		else
-		{
-			shell.getDisplay().syncExec(()->
-			{
-				btnRun.setEnabled(false);
-				btnRun.setText("크롤링 시작");
-				crawler.turnOff();
-				crawler = null;
-			});
-		}
+		
+		btnRun.setEnabled(true);
 	}
 	
 
-	/***
-	 * @param progress 0~100
-	 */
-	public void setProgress(int progress)
-	{
-		shell.getDisplay().asyncExec(()-> { progressBar.setSelection(progress);});
-	}
-	
 	public void appendGoogle(String str)
 	{
 		if(txtCountGoogle != 0)
@@ -122,32 +125,6 @@ public class MainFrame
 		txtCountGoogle = 0;
 		txtCountWoS = 0;
 	}
-	
-	public void showError(String str)
-	{
-		shell.getDisplay().syncExec(()->
-		{
-			lblStatus.setText("오류 발생");
-	        MessageBox dia = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
-	        dia.setText("오류");
-	        dia.setMessage(str); 
-	        dia.open();
-		});
-	}
-	
-	public void setStatusString(String str)
-	{ shell.getDisplay().asyncExec(()-> { lblStatus.setText(str); }); }
-	
-	public void onCrawlEnd()
-	{
-		shell.getDisplay().syncExec(()->
-		{
-			btnRun.setText("크롤링 시작");
-			btnRun.setEnabled(true);
-			crawler = null;
-		});
-	}
-	
 	
 	protected void createContents()
 	{
@@ -211,17 +188,24 @@ public class MainFrame
 		btnWoS.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
 		btnWoS.setText("클립보드로 복사");
 		
+		Button btnNewButton = new Button(compMaster, SWT.NONE);
+		btnNewButton.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) { chooseFile(); }
+		});
+		btnNewButton.setFont(SWTResourceManager.getFont("맑은 고딕", 16, SWT.NORMAL));
+		btnNewButton.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		btnNewButton.setText("파일 선택");
+		
 		btnRun = new Button(compMaster, SWT.NONE);
-		btnRun.setFont(SWTResourceManager.getFont("맑은 고딕", 20, SWT.NORMAL));
+		btnRun.setEnabled(false);
+		btnRun.setFont(SWTResourceManager.getFont("맑은 고딕", 16, SWT.NORMAL));
 		btnRun.addSelectionListener(new SelectionAdapter() {
 			@Override
-			public void widgetSelected(SelectionEvent arg0) { toggleCrawl(); }
+			public void widgetSelected(SelectionEvent arg0) { parseFiles(); }
 		});
 		btnRun.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1));
-		btnRun.setText("크롤링 시작");
-		
-		progressBar = new ProgressBar(compMaster, SWT.NONE);
-		progressBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		btnRun.setText("파일에서 읽기");
 		
 		lblStatus = new Label(compMaster, SWT.RIGHT);
 		lblStatus.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
