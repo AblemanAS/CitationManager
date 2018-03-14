@@ -1,7 +1,6 @@
 package core;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -12,28 +11,24 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import ui.MainFrame;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 
 public class FileParser
 {
 	private String		dateString;
 	private String 		papersStr;
-	private MainFrame 	ui;
 
-	public FileParser(String papersStr, MainFrame ui)
-	{		
-		this.papersStr = papersStr;
-		this.ui = ui;
-	}
+	public FileParser(String papersStr)
+	{ this.papersStr = papersStr; }
 	
-	private String preprocess(String paperName)
-	{ return paperName.toLowerCase().replaceAll("[^A-Za-z]+", ""); }
-	
-	public void parse(String[] filePaths) throws Exception
+	public String[] parse(String[] filePaths) throws Exception
 	{
+		StringBuilder sbGoogle = new StringBuilder();
+		StringBuilder sbWoS = new StringBuilder();
+		
 		Calendar cal = Calendar.getInstance();
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
-		dateString = " (" + dateFormat.format(cal.getTime()) + ")";
+		dateString = " (" + dateFormat.format(cal.getTime()) + ")\n";
 		
 		// Get Paper list
 		String[] papersStrArr = papersStr.split("\n");
@@ -41,34 +36,21 @@ public class FileParser
 		for(String eString : papersStrArr)
 		{
 			String paper = eString.trim();
-			if(paper.length() > 5) paperList.add(preprocess(paper));
+			if(paper.length() > 5) paperList.add(paper);
 		}
-		
 		// Read and Parse Documents
 		List<Paper> parsedPapers = new ArrayList<Paper>();
 		for(String eString : filePaths)
 		{
-			// Read
-			BufferedReader reader = new BufferedReader(new FileReader(eString));
-			StringBuffer strBuf = new StringBuffer();
-			while(true)
-			{
-				String str = reader.readLine();
-				if(str == null) break;
-				strBuf.append(str + "\n");
-			}
-			reader.close();
-			String fileString = strBuf.toString();
-
 			// Parse
-			Document doc = Jsoup.parse(fileString);
+			Document doc = Jsoup.parse(new File(eString), "UTF-8");
 			Elements eList = doc.getElementById("gs_res_ccl_mid").children();
 			for(Element item : eList)
 			{
 				item = item.getElementsByClass("gs_ri").get(0);
 				
 				// Paper Title
-				String paperName = preprocess(item.getElementsByClass("gs_rt").get(0).text());
+				String paperName = item.getElementsByClass("gs_rt").get(0).child(0).text();
 				String citeGoogle = "0회";
 				String citeWoS = "0회";
 				
@@ -105,26 +87,44 @@ public class FileParser
 			System.out.println(ePaper.title + " : " + ePaper.citeGoogle + ", " + ePaper.citeWoS);
 		
 		// Get Citations
+		LevenshteinDistance ld = LevenshteinDistance.getDefaultInstance();
 		for(String eString : paperList)
 		{
-			boolean found = false;
+			int leastScore = Integer.MAX_VALUE;
+			String citeStrGoogle = "";
+			String citeStrWoS = "";
 			
 			for(Paper ePaper : parsedPapers)
 			{
-				if(ePaper.title.contains(eString))
+				int score = ld.apply(ePaper.title, eString);
+				if(score < leastScore)
 				{
-					ui.appendGoogle(ePaper.citeGoogle + dateString);
-					ui.appendWoS(ePaper.citeWoS + dateString);
-					found = true;
-					break;
+					leastScore = score;
+					citeStrGoogle = ePaper.citeGoogle;
+					citeStrWoS = ePaper.citeWoS;
 				}
 			}
-			
-			if(!found)
+
+			System.out.println(eString + " : " + leastScore + " of " + eString.length() + " (" + (float)leastScore / (float)eString.length() + ")");
+			if(leastScore < eString.length() / 5)
 			{
-				ui.appendGoogle("미등록");
-				ui.appendWoS("미등록");
+				sbGoogle.append(citeStrGoogle);
+				sbGoogle.append(dateString);
+				sbWoS.append(citeStrWoS);
+				sbWoS.append(dateString);
+			}
+			else
+			{
+				sbGoogle.append("미등록\n");
+				sbWoS.append("미등록\n");
 			}
 		}
+		
+		sbGoogle.deleteCharAt(sbGoogle.length() - 1);
+		sbWoS.deleteCharAt(sbWoS.length() - 1);
+		String[] result = new String[2];
+		result[0] = sbGoogle.toString();
+		result[1] = sbWoS.toString();
+		return result;
 	}
 }

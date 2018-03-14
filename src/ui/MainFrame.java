@@ -7,10 +7,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
-
-import core.CopyToClipboard;
-import core.FileParser;
-
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
@@ -22,9 +18,12 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.wb.swt.SWTResourceManager;
 
+import core.CopyToClipboard;
+import core.FileParser;
+
 public class MainFrame
 {
-	public static final String VERSION = "0.6";
+	public static final String VERSION = "0.7";
 	
 	protected Shell shell;
 	private Text txtGoogle;
@@ -34,8 +33,6 @@ public class MainFrame
 	private Label lblStatus;
 	
 	private String[] filePaths;
-	private int txtCountGoogle;
-	private int txtCountWoS;
 	
 	/**
 	 * @wbp.parser.entryPoint
@@ -70,7 +67,7 @@ public class MainFrame
         FileDialog fd = new FileDialog(shell, SWT.MULTI);
         fd.setText("저장된 HTML 문서 선택");
         fd.setFilterPath("C:/");
-        String[] filterExt = {"*.html", "*.htm", ".txt"};
+        String[] filterExt = {"*.html", "*.htm", "*.txt"};
         fd.setFilterExtensions(filterExt);
         if(fd.open() != null)
         {
@@ -87,7 +84,12 @@ public class MainFrame
 	{
 		btnRun.setEnabled(false);
 		clear();
-		try { new FileParser(txtPapers.getText(), this).parse(filePaths); }
+		try
+		{
+			String[] result = new FileParser(txtPapers.getText()).parse(filePaths);
+			shell.getDisplay().syncExec(()-> { txtGoogle.append(result[0]); });
+			shell.getDisplay().syncExec(()-> { txtWoS.append(result[1]); });
+		}
 		catch(Exception e)
 		{
 			lblStatus.setText("오류 발생");
@@ -100,30 +102,10 @@ public class MainFrame
 		btnRun.setEnabled(true);
 	}
 	
-
-	public void appendGoogle(String str)
-	{
-		if(txtCountGoogle != 0)
-			shell.getDisplay().asyncExec(()-> { txtGoogle.append("\n"); });
-		shell.getDisplay().asyncExec(()-> { txtGoogle.append(str); });
-		txtCountGoogle++;
-	}
-
-	public void appendWoS(String str)
-	{
-		if(txtCountWoS != 0)
-			shell.getDisplay().asyncExec(()-> { txtWoS.append("\n"); });
-		shell.getDisplay().asyncExec(()-> { txtWoS.append(str); });
-		txtCountWoS++;
-	}
-	
-	
 	public void clear()
 	{
 		shell.getDisplay().syncExec(()-> { txtGoogle.setText(""); });
 		shell.getDisplay().syncExec(()-> { txtWoS.setText(""); });
-		txtCountGoogle = 0;
-		txtCountWoS = 0;
 	}
 	
 	protected void createContents()
