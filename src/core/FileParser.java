@@ -79,33 +79,39 @@ public class FileParser
 			}
 		}
 
-		
+		System.out.println("===== 논문 목록 =====");
 		for(String ePaper : paperList)
 			System.out.println(ePaper);
-		
+
+		System.out.println("\n\n===== 문서에서 읽은 리스트 =====");
 		for(Paper ePaper : parsedPapers)
 			System.out.println(ePaper.title + " : " + ePaper.citeGoogle + ", " + ePaper.citeWoS);
-		
+
 		// Get Citations
+		System.out.println("\n\n===== 유사도 매칭 =====");
 		LevenshteinDistance ld = LevenshteinDistance.getDefaultInstance();
 		for(String eString : paperList)
 		{
 			int leastScore = Integer.MAX_VALUE;
 			String citeStrGoogle = "";
 			String citeStrWoS = "";
+			String strNearest = "";
 			
 			for(Paper ePaper : parsedPapers)
 			{
-				int score = ld.apply(ePaper.title, eString);
+				int score = ld.apply(ePaper.title.toLowerCase(), eString.toLowerCase());
 				if(score < leastScore)
 				{
 					leastScore = score;
+					strNearest = ePaper.title;
 					citeStrGoogle = ePaper.citeGoogle;
 					citeStrWoS = ePaper.citeWoS;
 				}
 			}
 
 			System.out.println(eString + " : " + leastScore + " of " + eString.length() + " (" + (float)leastScore / (float)eString.length() + ")");
+			System.out.println(strNearest);
+			
 			if(leastScore < eString.length() / 5)
 			{
 				sbGoogle.append(citeStrGoogle);

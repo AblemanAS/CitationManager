@@ -23,7 +23,7 @@ import core.FileParser;
 
 public class MainFrame
 {
-	public static final String VERSION = "0.7";
+	public static final String VERSION = "0.7b";
 	
 	protected Shell shell;
 	private Text txtGoogle;
